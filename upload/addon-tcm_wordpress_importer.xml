@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<addon addon_id="tcm_wordpress_importer" title="WordPress 3.x User Importer" version_string="1.0" version_id="1" url="" install_callback_class="" install_callback_method="" uninstall_callback_class="" uninstall_callback_method="">
+  <admin_navigation/>
+  <admin_permissions/>
+  <admin_style_properties/>
+  <admin_templates>
+    <template title="import_wordpress_config"><![CDATA[<xen:title>{xen:phrase configure_importer}: {$name}</xen:title>
+
+<xen:form action="{xen:adminlink import/config}">
+    <xen:if is="{$config}">
+        <fieldset>
+            <xen:controlunit label="{xen:phrase mysql_server}:">{$config.db.host}</xen:controlunit>
+            <xen:controlunit label="{xen:phrase mysql_port}:">{$config.db.port}</xen:controlunit>
+            <xen:controlunit label="{xen:phrase mysql_user_name}:">{$config.db.username}</xen:controlunit>
+            <xen:controlunit label="{xen:phrase mysql_password}:">{$config.db.password}</xen:controlunit>
+            <xen:controlunit label="{xen:phrase mysql_database_name}:">{$config.db.dbname}</xen:controlunit>
+            <xen:controlunit label="{xen:phrase table_prefix}:">{$config.db.prefix}</xen:controlunit>
+        </fieldset>
+
+        <input type="hidden" name="config[db][host]" value="{$config.db.host}" />
+        <input type="hidden" name="config[db][port]" value="{$config.db.port}" />
+        <input type="hidden" name="config[db][username]" value="{$config.db.username}" />
+        <input type="hidden" name="config[db][password]" value="{$config.db.password}" />
+        <input type="hidden" name="config[db][dbname]" value="{$config.db.dbname}" />
+        <input type="hidden" name="config[db][prefix]" value="{$config.db.prefix}" />
+
+    <xen:else />
+        <fieldset>
+            <xen:textboxunit label="{xen:phrase mysql_server}:" name="config[db][host]" value="localhost" />
+            <xen:textboxunit label="{xen:phrase mysql_port}:" name="config[db][port]" value="3306" />
+            <xen:textboxunit label="{xen:phrase mysql_user_name}:" name="config[db][username]" value="" placeholder="DB_USER"/>
+            <xen:textboxunit label="{xen:phrase mysql_password}:" name="config[db][password]" value="" placeholder="DB_PASSWORD" autocomplete="off" />
+            <xen:textboxunit label="{xen:phrase mysql_database_name}:" name="config[db][dbname]" value="" placeholder="DB_NAME" />
+            <xen:textboxunit label="{xen:phrase table_prefix}:" name="config[db][prefix]" value="" placeholder="$table_prefix " />
+        </fieldset>
+    </xen:if>
+
+    <xen:submitunit save="{xen:phrase validate_configuration}" />
+
+    <input type="hidden" name="importer" value="{$importer}" />
+</xen:form>]]></template>
+    <template title="import_wordpress_map_roles"><![CDATA[<xen:title>{xen:phrase configure_user_group_import}</xen:title>
+
+<xen:form action="{xen:adminlink import/start-step}">
+
+	<xen:controlunit label="">{xen:phrase map_your_wordpress_roles_to_xenforo_user_groups}</xen:controlunit>
+
+        <xen:selectunit label="Administrator" name="options[administrator]">
+            <xen:options source="$default.administrator" />
+            <xen:explain>What is an <a href="http://codex.wordpress.org/Roles_and_Capabilities#Administrator">Administrator</a>?</xen:explain>
+        </xen:selectunit>
+
+        <xen:selectunit label="Author" name="options[author]">
+            <xen:options source="$default.author" />
+            <xen:explain>What is an <a href="http://codex.wordpress.org/Roles_and_Capabilities#Author">Author</a>?</xen:explain>
+        </xen:selectunit>
+
+        <xen:selectunit label="Editor" name="options[editor]">
+            <xen:options source="$default.editor" />
+            <xen:explain>What is an <a href="http://codex.wordpress.org/Roles_and_Capabilities#Editor">Editor</a>?</xen:explain>
+        </xen:selectunit>
+
+        <xen:selectunit label="Contributor" name="options[contributor]">
+            <xen:options source="$default.contributor" />
+            <xen:explain>What is a <a href="http://codex.wordpress.org/Roles_and_Capabilities#Contributor">Contributor</a>?</xen:explain>
+        </xen:selectunit>
+
+        <xen:selectunit label="Subscriber" name="options[subscriber]">
+            <xen:options source="$default.subscriber" />
+            <xen:explain>What is a <a href="http://codex.wordpress.org/Roles_and_Capabilities#Subscriber">Subscriber</a>?</xen:explain>
+        </xen:selectunit>
+	
+	<xen:submitunit save="{xen:phrase map_wordpress_roles}" />
+		
+	<input type="hidden" name="step" value="{$step}" />
+</xen:form>]]></template>
+    <template title="import_wordpress_merge_users"><![CDATA[<xen:title>{xen:phrase manually_merge_users}</xen:title>
+
+<xen:form action="{xen:adminlink import/import}">
+	{xen:phrase following_users_conflicted_with_existing_names_or_emails}
+	
+	<xen:foreach loop="$users" key="$userId" value="$user">
+		<fieldset>
+			<xen:controlunit label="{xen:phrase user}:">
+				<xen:html>{$user.username} <xen:if is="{$user.email}">({$user.email})</xen:if></xen:html>
+				<xen:explain>{xen:phrase joined}: {xen:date $user.register_date}</xen:explain>
+			</xen:controlunit>
+			
+			<xen:radiounit label="" name="resolve[{$userId}][action]">
+				<xen:option value="merge" selected="true">{xen:phrase merge_with_existing_user}</xen:option>
+				<xen:option value="change" displayif="{$user.conflict} == 'email'">
+					<xen:label>{xen:phrase change_conflicting_email_address}:</xen:label>
+					<xen:textbox name="resolve[{$userId}][email]" value="{$user.email}" />
+				</xen:option>
+				<xen:option value="change" displayif="{$user.conflict} == 'name'">
+					<xen:label>{xen:phrase change_conflicting_user_name}:</xen:label>
+					<xen:textbox name="resolve[{$userId}][username]" value="{$user.username}" />
+				</xen:option>
+				<xen:option value="change" displayif="{$user.conflict} == 'both'">
+					<xen:label>{xen:phrase change_conflicting_user_name_and_email_address}:</xen:label>
+					<xen:disabled>
+						<xen:textbox name="resolve[{$userId}][username]" value="{$user.username}" />
+						<xen:textbox name="resolve[{$userId}][email]" value="{$user.email}" />
+					</xen:disabled>
+				</xen:option>
+			</xen:radiounit>
+		</fieldset>
+	</xen:foreach>
+	
+	<xen:submitunit save="{xen:phrase merge_users}" />
+</xen:form>]]></template>
+    <template title="import_wordpress_steps"><![CDATA[<xen:title>{xen:phrase import_data}: {$importerName}</xen:title>
+
+<xen:require css="import.css" />
+
+<form action="{xen:adminlink import/start-step}" method="post">
+<ol>
+<xen:foreach loop="$steps" key="$step" value="$info">
+	<li class="importRow">
+		<xen:if is="{$info.hasRun}">
+                        <xen:if is="{$step} == 'userGroups'">
+			    <input type="submit" name="step_{$step}" value="{$info.title}" class="button stepButton disabled disabled="disabled" />
+			
+			    {xen:phrase wordpress_roles_mapped}
+                        <xen:else />
+                            <input type="submit" name="step_{$step}" value="{$info.title}" class="button stepButton disabled" disabled="disabled" />
+			
+			    {xen:phrase imported_x_items, 'count={xen:number $info.importTotal}'}
+			    <xen:if is="{$info.runTime}">
+				    (<xen:if is="{$info.runTime.hours}">{xen:phrase x_hours, 'count={xen:number $info.runTime.hours}'} </xen:if><xen:if is="{$info.runTime.minutes}">{xen:phrase x_minutes, 'count={xen:number $info.runTime.minutes}'} </xen:if>{xen:phrase x_seconds, 'time={xen:number $info.runTime.seconds, 2}'})
+			    </xen:if>
+                        </xen:if>
+		<xen:elseif is="{$info.runnable}" />
+			<input type="submit" name="step_{$step}" value="{$info.title}" class="button stepButton" />
+		<xen:else />
+			<input type="submit" name="step_{$step}" value="{$info.title}" class="button stepButton disabled" disabled="disabled" />
+			
+			{xen:phrase this_step_cannot_be_run_yet}
+		</xen:if>
+	</li>
+</xen:foreach>
+	
+	<li class="importRow">
+		<a href="{xen:adminlink import/complete}" class="button stepButton OverlayTrigger">{xen:phrase complete_import}...</a>
+	</li>
+</ol>
+	
+	<input type="hidden" name="_xfToken" value="{$visitor.csrf_token_page}" />
+</form>]]></template>
+  </admin_templates>
+  <code_events/>
+  <code_event_listeners>
+    <listener event_id="load_class_controller" execute_order="10" callback_class="TheCollectiveMind_Listener_ControllerAdmin_WordPress" callback_method="loadClassController" active="1" description="Uses different import_step template"/>
+    <listener event_id="load_class_model" execute_order="10" callback_class="TheCollectiveMind_Listener_Importer_WordPress" callback_method="loadClassModel" active="1" description="Imports Wordpress Users &amp; Passwords into Xenforo"/>
+  </code_event_listeners>
+  <cron/>
+  <email_templates/>
+  <optiongroups/>
+  <permissions>
+    <permission_groups/>
+    <permissions/>
+    <interface_groups/>
+  </permissions>
+  <phrases>
+    <phrase title="map_wordpress_roles" version_id="1" version_string="1.0"><![CDATA[Map Wordpress Roles]]></phrase>
+    <phrase title="map_your_wordpress_roles_to_xenforo_user_groups" version_id="1" version_string="1.0"><![CDATA[Map WordPress roles to XenForo user groups]]></phrase>
+    <phrase title="wordpress_roles_mapped" version_id="1" version_string="1.0"><![CDATA[WordPress roles have been mapped to XenForo user groups.]]></phrase>
+  </phrases>
+  <route_prefixes/>
+  <style_properties/>
+  <templates/>
+  <bb_code_media_sites/>
+</addon>
