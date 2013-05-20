@@ -7,6 +7,6 @@ v1.1
 User defined roles will be able to be assigned during configuration
 
 v1.0
-Inital relase of pluging
+Inital relase of plugin
 
 Screenshots at: http://imgur.com/a/npukD
