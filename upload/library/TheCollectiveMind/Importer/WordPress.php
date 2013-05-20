@@ -33,10 +33,16 @@ class TheCollectiveMind_Importer_WordPress extends XenForo_Importer_Abstract
     protected $_config;
 
     /**
-     * Timezone of the Wordpress install
+     * Timezone of the WordPress install
      * @var string
      */
     protected $_wpTimezone;
+
+    /**
+     * User defiened WordPress roles
+     * @var array
+     */
+    protected $_wpUserRoles;
 
     /**
      * Sets the name used in the dropdown in the Import External Data tool
@@ -169,6 +175,7 @@ class TheCollectiveMind_Importer_WordPress extends XenForo_Importer_Abstract
      */
     protected function _bootstrap(array $config)
     {
+
         if ($this->_sourceDb) {
             // already run
             return;
@@ -208,14 +215,43 @@ class TheCollectiveMind_Importer_WordPress extends XenForo_Importer_Abstract
             return false;
         }
 
+        $config = $this->_session->getConfig();
+
         $userGroup = XenForo_Model::create('XenForo_Model_UserGroup');
         $viewParams = array('default' => array (
             'subscriber'    => $userGroup->getUserGroupOptions(XenForo_Model_User::$defaultRegisteredGroupId),
             'administrator' => $userGroup->getUserGroupOptions(XenForo_Model_User::$defaultAdminGroupId),
             'editor'        => $userGroup->getUserGroupOptions(XenForo_Model_User::$defaultModeratorGroupId),
             'author'        => $userGroup->getUserGroupOptions(XenForo_Model_User::$defaultModeratorGroupId),
-            'contributor'   => $userGroup->getUserGroupOptions(XenForo_Model_User::$defaultRegisteredGroupId),
+            'contributor'   => $userGroup->getUserGroupOptions(XenForo_Model_User::$defaultRegisteredGroupId)
         ));
+
+        if (!$this->_sourceDb) {
+            $this->_sourceDb = Zend_Db::factory('mysqli',
+                array(
+                    'host' => $config['db']['host'],
+                    'port' => $config['db']['port'],
+                    'username' => $config['db']['username'],
+                    'password' => $config['db']['password'],
+                    'dbname' => $config['db']['dbname']
+                )
+            );
+        }
+
+        if (!$this->_prefix) {
+            $this->_prefix = $config['db']['prefix'];
+        }
+
+        $this->_wpUserRoles = $this->_getWordpressUserRoles();
+
+        if (!empty($this->_wpUserRoles)) {
+            $viewParams['extraRles'] = true;
+            foreach($this->_wpUserRoles as $role) {
+                $viewParams['userRoles'][] = array('options' => $userGroup->getUserGroupOptions(XenForo_Model_User::$defaultRegisteredGroupId),
+                                                   'name'    => $role['name'],
+                                                   'label'   => $role['label']);
+            }
+        }
 
         return $this->_controller->responseView('XenForo_ViewAdmin_Import_WordPress_ConfigUserGroups', 'import_wordpress_map_roles', $viewParams);
     }
@@ -540,7 +576,9 @@ class TheCollectiveMind_Importer_WordPress extends XenForo_Importer_Abstract
         // If the user has a valid WordPress role use the mappings defined in stepUserGroups to assign the primary user group
         if ($user['meta_value']) {
             $role = key(unserialize($user['meta_value']));
-            $import['user_group_id'] = $options['rolesToGroups'][$role];
+            if (isset($options['rolesToGroups'][$role])) {
+                $import['user_group_id'] = $options['rolesToGroups'][$role];
+            }
         }
         // If gravatar was selected during configuration set their email
         if ($options['gravatar']) {
@@ -553,5 +591,34 @@ class TheCollectiveMind_Importer_WordPress extends XenForo_Importer_Abstract
         $importedUserId = $this->_importModel->importUser($user['ID'], $import, $failedKey);
 
         return $importedUserId;
+    }
+
+    /**
+     * Gets all the custom WordPress roles
+     */
+    protected function _getWordpressUserRoles()
+    {
+        $systemRoles = array('administrator',
+                             'editor',
+                             'author',
+                             'contributor',
+                             'subscriber');
+
+        $rawUserRoles = $this->_sourceDb->fetchOne('
+            SELECT option_value 
+            FROM ' . $this->_prefix . 'options 
+            WHERE option_name = \'' . $this->_prefix . 'user_roles\'
+        ');
+
+        $rawUserRoles = unserialize($rawUserRoles);
+        $userRoles = array();
+        foreach ($rawUserRoles as $key => $role) {
+            if (!in_array($key, $systemRoles)) {
+                $userRoles[] = array('name'  => $key,
+                                     'label' => $role['name']);
+            }
+        }
+
+        return $userRoles;
     }
 }

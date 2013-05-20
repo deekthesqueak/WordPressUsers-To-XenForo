@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<addon addon_id="tcm_wordpress_importer" title="WordPress 3.x User Importer" version_string="1.0" version_id="1" url="" install_callback_class="" install_callback_method="" uninstall_callback_class="" uninstall_callback_method="">
+<addon addon_id="tcm_wordpress_importer" title="WordPress 3.x User Importer" version_string="1.1" version_id="2" url="" install_callback_class="" install_callback_method="" uninstall_callback_class="" uninstall_callback_method="">
   <admin_navigation/>
   <admin_permissions/>
   <admin_style_properties/>
@@ -69,6 +69,15 @@
             <xen:options source="$default.subscriber" />
             <xen:explain>What is a <a href="http://codex.wordpress.org/Roles_and_Capabilities#Subscriber">Subscriber</a>?</xen:explain>
         </xen:selectunit>
+
+        <xen:if is="{$userRoles}">
+            <xen:foreach loop="$userRoles" value="$child">
+                <xen:selectunit label="{$child.label}" name="options[{$child.name}]">
+                    <xen:options source="$child.options" />
+                    <xen:explain>User defined role</xen:explain>
+                </xen:selectunit>
+            </xen:foreach>
+        </xen:if>
 	
 	<xen:submitunit save="{xen:phrase map_wordpress_roles}" />
 		
